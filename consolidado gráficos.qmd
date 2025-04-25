@@ -1,0 +1,1575 @@
+---
+title: "Consolidado Gráficos"
+format: pdf
+editor: visual
+---
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls())
+library(haven)
+library(dplyr)
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(ggplot2)
+library(patchwork)
+options(scipen = 999)
+```
+
+## Consumo drogas SENDA
+
+```{r, echo=FALSE, message=FALSE}
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="wide por droga")
+datos1 <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="long")
+
+orden_regiones <- c("Arica y Parinacota", "Tarapacá", "Antofagasta", "Atacama", 
+                    "Coquimbo", "Valparaíso", "Lib. Bernardo O´Higgins", "Maule", 
+                    "Ñuble", "Bio Bio", "Araucanía", "De los Ríos", "De los Lagos", 
+                    "Aysén", "Magallanes", "RM")
+```
+
+##### Prevalencia Consumo drogas
+
+```{r, echo=FALSE, warning=FALSE}
+# Vector con el orden de las drogas
+orden_drogas <- c(
+  "Marihuana", 
+  "Cocaína", 
+  "PastaBase", 
+  "Extasis", 
+  "Heroína", 
+  "Crack", 
+  "Popper", 
+  "LSD", 
+  "Tussi", 
+  "Hongos", 
+  "SanPedro", 
+  "PolvoÁngel", 
+  "Tranquilizantes_s/r", 
+  "Estimulantes_s/r",
+  "Cocaínas",
+  "Alucinógenos",
+  "Otras",
+  "Marihuana_j", 
+  "Cocaína_j", 
+  "PastaBase_j", 
+  "Extasis_j", 
+  "Heroína_j", 
+  "Crack_j", 
+  "Popper_j", 
+  "LSD_j", 
+  "Tussi_j", 
+  "Hongos_j", 
+  "SanPedro_j", 
+  "PolvoÁngel_j", 
+  "Tranquilizantes_s/r_j", 
+  "Estimulantes_s/r_j",
+  "Cocaínas_j",
+  "Alucinógenos_j",
+  "Otras_j"
+)
+
+datos1 %>%
+  filter(Region == "Total") %>%
+  filter(Droga %in% c("Marihuana", "Cocaína", "PastaBase", "Extasis", "Marihuana_j", "Cocaína_j", "PastaBase_j", "Extasis_j")) %>%
+  mutate(Droga = factor(Droga, levels = orden_drogas)) %>% 
+  ggplot(aes(x = Año, y = Prevalencia)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje (%)") +
+  facet_wrap(~ Droga, ncol = 4) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) + 
+  theme_minimal()
+
+
+datos1 %>%
+  filter(Region == "Total") %>%
+  filter(!Droga %in% c("Marihuana", "Cocaína", "PastaBase", "Extasis", "Tranquilizantes_s/r", "Estimulantes_s/r", "Cocaínas", "Alucinógenos", "Otras", "Marihuana_j", "Cocaína_j", "PastaBase_j", "Extasis_j", "Tranquilizantes_s/r_j", "Estimulantes_s/r_j", "Cocaínas_j", "Alucinógenos_j", "Otras_j")) %>%
+  mutate(Droga = factor(Droga, levels = orden_drogas)) %>% 
+  ggplot(aes(x = Año, y = Prevalencia, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Droga, ncol = 4) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) + 
+  theme_minimal()
+
+```
+
+##### Prevalencia consumo drogas agrupadas
+
+Otras = todas menos marihuana
+
+```{r, echo=FALSE, warning=FALSE}
+orden_drogas2 <- c("Marihuana", "Cocaínas", "Alucinógenos", "Otras", "Marihuana_j", "Cocaínas_j", "Alucinógenos_j", "Otras_j")
+
+datos1 %>%
+  filter(Region == "Total") %>%
+  filter(Droga %in% c("Marihuana", "Cocaínas", "Alucinógenos", "Otras", "Marihuana_j", "Cocaínas_j", "Alucinógenos_j", "Otras_j")) %>%
+  mutate(Droga = factor(Droga, levels = orden_drogas2)) %>% 
+  ggplot(aes(x = Año, y = Prevalencia)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje (%)") +
+  facet_wrap(~ Droga, ncol = 4) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) + 
+  theme_minimal()
+```
+
+##### Prevalencia Consumo Marihuana en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Marihuana)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje (%)") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +  
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Marihuana", "Marihuana_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Marihuana)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Cocaína en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Cocaína)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Cocaína", "Cocaína_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Cocaína)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Pasta Base en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = PastaBase)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("PastaBase", "PastaBase_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = PastaBase)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+    scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Extasis en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Extasis)) +
+  geom_line() +
+  geom_point() +
+  geom_segment(aes(x = 2014, y = Extasis[Año == 2014], 
+                   xend = 2018, yend = Extasis[Año == 2018]),
+                linetype = "dashed") +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +  
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Extasis", "Extasis_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Extasis)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Heroína en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Heroína)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Heroína", "Heroína_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Heroína)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Crack en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Crack)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Crack", "Crack_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Crack)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Popper en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Popper)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Popper", "Popper_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Popper)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo LSD en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = LSD)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("LSD", "LSD_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = LSD)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Tussi
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Tussi)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Tussi", "Tussi_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Tussi)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Hongos en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Hongos)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Hongos", "Hongos_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Hongos)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo San Pedro en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = SanPedro)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("SanPedro", "SanPedro_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = SanPedro)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Polvo de Ángel en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = PolvoÁngel)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("PolvoÁngel", "PolvoÁngel_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = PolvoÁngel)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Tranquilizantes sin receta médica en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = `Tranquilizantes_s/r`)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Tranquilizantes_s/r", "Tranquilizantes_s/r_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = `Tranquilizantes_s/r`)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Estimulantes sin receta médica en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = `Estimulantes_s/r`)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Estimulantes_s/r", "Estimulantes_s/r_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = `Estimulantes_s/r`)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Cocaínas en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Cocaínas)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Cocaínas", "Cocaínas_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Cocaínas)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Alucinógenos en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Alucinógenos)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Alucinógenos", "Alucinógenos_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Alucinógenos)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+##### Prevalencia Consumo Otras Drogas en el último año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Otras)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 %>%
+  filter(Region == "Total", Droga %in% c("Otras", "Otras_j")) %>%
+  ggplot(aes(x = Año, y = Prevalencia, color = Droga, group = Droga)) +
+  geom_line(size = 1) +        # Línea para cada serie
+  geom_point(size = 2) +       # Puntos en cada año
+  labs(x = "Año", y = "Porcentaje (%)", color = "Tipo de Droga") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Region != "Total") %>%
+  mutate(Region = factor(Region, levels = orden_regiones)) %>%
+  ggplot(aes(x = Año, y = Otras)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Region, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+## Oferta de Drogas SENDA
+
+```{r, echo=FALSE, message=FALSE}
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="oferta wide")
+datos1 <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="oferta long")
+```
+
+##### Tipo de marihuana
+
+```{r, echo=FALSE, message=FALSE}
+datos %>%
+  filter(Region == "Total", !is.na(Prensada)) %>%
+  ggplot(aes(x = Año, y = Prensada)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  scale_x_continuous(breaks = seq(2012, 2022, by = 2)) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE, message=FALSE}
+datos %>%
+  filter(Region == "Total", !is.na(`No prensada`)) %>%
+  ggplot(aes(x = Año, y = `No prensada`)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  scale_x_continuous(breaks = seq(2012, 2022, by = 2)) +
+  theme_minimal()
+```
+
+##### Exposición a oferta de Marihuana en el último año
+
+```{r, echo=FALSE, message=FALSE}
+datos %>%
+  filter(Region == "Total", !is.na(Marihuana)) %>%
+  ggplot(aes(x = Año, y = Marihuana)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  scale_x_continuous(breaks = seq(2002, 2022, by = 2)) +
+  theme_minimal()
+```
+
+##### Exposición a oferta de Cocaína en el último año
+
+```{r, echo=FALSE, message=FALSE}
+datos %>%
+  filter(Region == "Total", !is.na(Cocaína)) %>%
+  ggplot(aes(x = Año, y = Cocaína)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  scale_x_continuous(breaks = seq(2002, 2022, by = 2)) +
+  theme_minimal()
+```
+
+##### Exposición a oferta de Pasta Base en el último año
+
+```{r, echo=FALSE, message=FALSE}
+datos %>%
+  filter(Region == "Total", !is.na(`Pasta Base`)) %>%
+  ggplot(aes(x = Año, y = `Pasta Base`)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  scale_x_continuous(breaks = seq(2002, 2022, by = 2)) +
+  theme_minimal()
+```
+
+##### Exposición a oferta de Extasis en el último año
+
+```{r, echo=FALSE, message=FALSE}
+datos %>%
+  filter(Region == "Total", !is.na(Extasis)) %>%
+  ggplot(aes(x = Año, y = Extasis)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  scale_x_continuous(breaks = seq(2002, 2022, by = 2)) +
+  theme_minimal()
+```
+
+## Egresos Hospitalarios DEIS
+
+Comentarios:
+
+-   Falta desglosar por las drogas que más nos interesan.
+
+-   Código CIE-10 incorporado: "T400" (opiáceos), "T401" (heroína), "T402" (otros opiáceos), "T403" (metadona), "T404" (narcóticos sintéticos), "T405" (cocaína), "T406" (narcóticos no especificados), "T407" (cannabis), "T408" (LSD), "T409" (alucinógenos no especificados), "T436" (psicoestimulantes - anfetaminas, metilfenidato, extasis, otros psicoestimulantes), "T438" (otros fármacos psicotrópos). Habría que ver con más detalle si hay que sacar o dejar alguno.
+
+-   No está pero "T439" son psicotrópos no especificados.
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls())
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="DEIS")
+
+orden_regiones <- c("Arica y Parinacota", "Tarapacá", "Antofagasta", "Atacama", 
+                    "Coquimbo", "Valparaíso", "Lib. Bernardo O´Higgins", "Maule", 
+                    "Ñuble", "Bio Bio", "Araucanía", "De los Ríos", "De los Lagos", 
+                    "Aysén", "Magallanes", "RM")
+```
+
+##### Total de egresos envenenamiento por año
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>%
+  ggplot(aes(x = Año, y = Egresos)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.001)) + 
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>% # Excluye la región "Total"
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% # Ordena las regiones
+  ggplot(aes(x = Año, y = Egresos)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Región, ncol = 4) + 
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.001)) + 
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+## Percepciones en el barrio en el último año ENUSC
+
+##### Presencia tráfico de drogas en el último año (Siempre)
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls())
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="ENUSC long")
+
+orden_regiones <- c("Arica y Parinacota", "Tarapacá", "Antofagasta", "Atacama", 
+                    "Coquimbo", "Valparaíso", "Lib. Bernardo O´Higgins", "Maule", 
+                    "Ñuble", "Bio Bio", "Araucanía", "De los Ríos", "De los Lagos", 
+                    "Aysén", "Magallanes", "RM")
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>%
+  ggplot(aes(x = Año, y = Trafico)) +
+  geom_line() +
+  geom_point() +
+  geom_segment(aes(x = 2020, y = Trafico[Año == 2020], 
+                   xend = 2022, yend = Trafico[Año == 2022]),
+                linetype = "dashed") +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>% # Excluye la región "Total"
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% # Ordena las regiones
+  ggplot(aes(x = Año, y = Trafico)) +
+  geom_line() +
+  geom_point() +
+  geom_segment(data = datos %>%
+                 filter(Año %in% c(2020, 2022), Región != "Total") %>%
+                 mutate(Región = factor(Región, levels = orden_regiones)) %>%
+                 group_by(Región) %>%
+                 summarize(x = 2020, xend = 2022, 
+                           y = Trafico[Año == 2020], 
+                           yend = Trafico[Año == 2022], 
+                           .groups = "drop"),
+               aes(x = x, xend = xend, y = y, yend = yend),
+               linetype = "dashed") +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Región, ncol = 4) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+Comentario: El año 2023 la pregunta contempla 5 categorías de respuesta. Lo que puede implicar un subreporte de Siempre. El resto de los años contempla 4 categorías. En 2021 no se realizó la pregunta.
+
+##### Presencia tráfico de drogas en el último año (Siempre y Frecuentemente)
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>%
+  ggplot(aes(x = Año, y = Trafico2)) +
+  geom_line() +
+  geom_point() +
+  geom_segment(aes(x = 2020, y = Trafico2[Año == 2020], 
+                   xend = 2022, yend = Trafico2[Año == 2022]),
+                linetype = "dashed") +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>% # Excluye la región "Total"
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% # Ordena las regiones
+  ggplot(aes(x = Año, y = Trafico2)) +
+  geom_line() +
+  geom_point() +
+  geom_segment(data = datos %>%
+                 filter(Año %in% c(2020, 2022), Región != "Total") %>%
+                 mutate(Región = factor(Región, levels = orden_regiones)) %>%
+                 group_by(Región) %>%
+                 summarize(x = 2020, xend = 2022, 
+                           y = Trafico2[Año == 2020], 
+                           yend = Trafico2[Año == 2022], 
+                           .groups = "drop"),
+               aes(x = x, xend = xend, y = y, yend = yend),
+               linetype = "dashed") +
+  labs(x = "Año", y = "Porcentaje") +
+  facet_wrap(~ Región, ncol = 4) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10)) # Ajusta el tamaño del título de cada faceta
+```
+
+## Centros de tratamiento por droga (episodios) SENDA
+
+Comentarios:
+
+-   No son personas únicas, sino episodios de tratamiento. Es decir, que hay una persona que podría haber tenido dos episodios o más.
+
+-   Solo se consideran los tratamientos financiados por SENDA.
+
+-   Año correspondiente a ingreso de tratamiento.
+
+##### Episodios de tratamiento a lo largo de los años (incluye alcohol)
+
+```{r, echo=FALSE, warning=FALSE}
+rm(list = ls())
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Tratamiento")
+orden_regiones <- c("Arica y Parinacota", "Tarapacá", "Antofagasta", "Atacama", 
+                    "Coquimbo", "Valparaíso", "Lib. Bernardo O´Higgins", "Maule", 
+                    "Ñuble", "Bio Bio", "Araucanía", "De los Ríos", "De los Lagos", 
+                    "Aysén", "Magallanes", "RM")
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = Drogas, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento a lo largo de los años por región (incluye alcohol)
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = Drogas, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por droga
+
+```{r, echo=FALSE, warning=FALSE}
+datos1 <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Tratamiento_long")
+
+orden_drogas <- c("Alcohol", "Cocaí­na", "Pasta Base", "Marihuana", "Hipnóticos", "Sedantes", 
+                  "Inhalables", "Opioides Analgésicos", "Otros", "Anfetaminas", "Otros Alucinógenos", 
+                  "Crack", "Heroí­na", "Otros Estimulantes", "Extasis", "Esteroides Anabólicos", 
+                  "Metanfetaminas y otros derivados", "Metadona", "Fenilciclidina", "LSD", 
+                  "Tranquilizantes", "Sin especificar")
+
+datos1 %>%
+  filter(Droga %in% c("Alcohol", "Cocaí­na", "Marihuana", "Pasta Base")) %>%
+  mutate(Droga = factor(Droga, levels = orden_drogas)) %>% 
+  ggplot(aes(x = factor(Año), y = tasa_droga, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  facet_wrap(~ Droga, ncol = 2) +
+  theme_minimal()
+
+datos1 %>%
+  filter(!Droga %in% c("Alcohol", "Cocaí­na", "Marihuana", "Pasta Base")) %>%
+  mutate(Droga = factor(Droga, levels = orden_drogas)) %>% 
+  ggplot(aes(x = factor(Año), y = tasa_droga, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  facet_wrap(~ Droga, ncol = 3) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por Marihuana
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = Marihuana, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = Marihuana, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por Cocaína
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = Cocaina, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = Cocaina, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por Pasta Base
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = `Pasta Base`, group = 1)) + # Referencia correcta a la columna
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = `Pasta Base`, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por Extasis
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = Extasis, group = 1)) + # Referencia correcta a la columna
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = Extasis, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por LSD
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = LSD, group = 1)) + # Referencia correcta a la columna
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  theme_minimal()
+
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = LSD, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por Otros alucinógenos
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = `Otros Alucinógenos`, group = 1)) + # Referencia correcta a la columna
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = `Otros Alucinógenos`, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por Inhalables
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = Inhalables, group = 1)) + # Referencia correcta a la columna
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  theme_minimal()
+```
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = Inhalables, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por Crack
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = Crack, group = 1)) + # Referencia correcta a la columna
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  theme_minimal()
+
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = Crack, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por Heroína
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = Heroina, group = 1)) + # Referencia correcta a la columna
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  theme_minimal()
+
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = Heroina, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.01)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+##### Episodios de tratamiento por Sedantes
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = Sedantes, group = 1)) + # Referencia correcta a la columna
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  theme_minimal()
+
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = Sedantes, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+
+```
+
+##### Episodios de tratamiento por Opioides Analgésicos
+
+```{r, echo=FALSE, warning=FALSE}
+datos %>%
+  filter(Región == "Total") %>% # Filtrar solo la fila donde Región es "Total"
+  ggplot(aes(x = factor(Año), y = `Opioides Analgesicos`, group = 1)) + # Referencia correcta a la columna
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  theme_minimal()
+
+datos %>%
+  filter(Región != "Total") %>%
+  mutate(Región = factor(Región, levels = orden_regiones)) %>% 
+  ggplot(aes(x = factor(Año), y = `Opioides Analgesicos`, group = 1)) + # group = 1 para conectar puntos
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1)) +
+  facet_wrap(~ Región, ncol = 4) +
+  theme_minimal()
+```
+
+## Secuestros Ministerio Público
+
+```{r, echo=FALSE, warning=FALSE}
+rm(list = ls())
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="secuestros")
+```
+
+```{r, echo=FALSE, message=FALSE}
+datos %>%
+  filter(!is.na(secuestros)) %>%
+  ggplot(aes(x = Año, y = secuestros)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Cantidad") +
+  scale_x_continuous(breaks = seq(2012, 2022, by = 2)) +
+  theme_minimal()
+```
+
+## Gendarmería Asociación Ilícita
+
+```{r, echo=FALSE, message=FALSE}
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Gendarmería2")
+orden_regiones <- c("Arica y Parinacota", "Tarapacá", "Antofagasta", "Atacama", 
+                    "Coquimbo", "Valparaíso", "Lib. Bernardo O´Higgins", "Maule", 
+                    "Ñuble", "Bio Bio", "Araucanía", "De los Ríos", "De los Lagos", 
+                    "Aysén", "Magallanes", "RM")
+```
+
+Ingresos y porcentaje por Delitos Ley de Drogas
+
+```{r, echo=FALSE, warning=FALSE}
+# Gráfico 1: %  
+p1 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Delito_droga)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Gráfico 2: Ingresos Totales  
+p2 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Droga)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Ingresos Totales") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Unir gráficos y agregar títulos superiores  
+(p1 / p2) +  
+  plot_annotation(
+    title = "Comparación de Delitos de Droga",
+    subtitle = "% (Arriba) vs Ingresos Totales (Abajo)"
+  )
+```
+
+Ingresos y porcentaje por Delitos Ley de Armas
+
+```{r, echo=FALSE, warning=FALSE}
+# Gráfico 1: % con filtro de Region == "Total"
+p1 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Delito_armas)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Gráfico 2: Ingresos Totales con filtro de Region == "Total"
+p2 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Armas)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Ingresos Totales") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Unir gráficos y agregar títulos superiores  
+(p1 / p2) +  
+  plot_annotation(
+    title = "Comparación de Delitos de Complejidad Criminal",
+    subtitle = "% (Arriba) vs Ingresos Totales (Abajo)"
+  )
+```
+
+Ingresos y porcentaje por Asociación Ilícita
+
+```{r, echo=FALSE, warning=FALSE}
+# Gráfico 1: %  
+p1 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Delito_asociacion)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Gráfico 2: Ingresos Totales  
+p2 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Asociacion)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Ingresos Totales") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Unir gráficos y agregar títulos superiores  
+(p1 / p2) +  
+  plot_annotation(
+    title = "Comparación de Delitos de Asociacion Ilicita",
+    subtitle = "% (Arriba) vs Ingresos Totales (Abajo)"
+  )
+```
+
+Ingresos y porcentaje por Complejidad Criminal 1 (Drogas + Asociación Ilicita)
+
+```{r, echo=FALSE, warning=FALSE}
+# Gráfico 1: %  
+p1 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Delito_complejidad)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Gráfico 2: Ingresos Totales  
+p2 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Complejidad)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Ingresos Totales") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Unir gráficos y agregar títulos superiores  
+(p1 / p2) +  
+  plot_annotation(
+    title = "Comparación de Delitos de Complejidad Criminal",
+    subtitle = "% (Arriba) vs Ingresos Totales (Abajo)"
+  )
+```
+
+Ingresos y porcentaje por Complejidad Criminal 2 (Drogas + Armas)
+
+```{r, echo=FALSE, warning=FALSE}
+# Gráfico 1: % con filtro de Region == "Total"
+p1 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Delito_complejidad2)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Gráfico 2: Ingresos Totales con filtro de Region == "Total"
+p2 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Complejidad2)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Ingresos Totales") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Unir gráficos y agregar títulos superiores  
+(p1 / p2) +  
+  plot_annotation(
+    title = "Comparación de Delitos de Complejidad Criminal",
+    subtitle = "% (Arriba) vs Ingresos Totales (Abajo)"
+  )
+```
+
+Ingresos y porcentaje por Complejidad Criminal 3 (Drogas + Armas + Asociación Ilicita)
+
+```{r, echo=FALSE, warning=FALSE}
+# Gráfico 1: % con filtro de Region == "Total"
+p1 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Delito_complejidad3)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Porcentaje") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Gráfico 2: Ingresos Totales con filtro de Region == "Total"
+p2 <- datos %>%
+  filter(Region == "Total") %>%
+  ggplot(aes(x = Año, y = Complejidad3)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Año", y = "Ingresos Totales") +
+  theme_minimal() +
+  theme(plot.margin = margin(15, 10, 10, 10))  # Aumenta el margen superior  
+
+# Unir gráficos y agregar títulos superiores  
+(p1 / p2) +  
+  plot_annotation(
+    title = "Comparación de Delitos de Complejidad Criminal",
+    subtitle = "% (Arriba) vs Ingresos Totales (Abajo)"
+  )
+```

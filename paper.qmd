@@ -1,0 +1,1011 @@
+---
+title: "Gráficos Research Note"
+format: pdf
+editor: visual
+---
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls())
+library(haven)
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(readxl)
+library(writexl)
+library(gridExtra)
+library(grid)
+library(ggnewscale)
+library(patchwork)
+library(scico)
+library(ggridges)
+options(scipen = 999)
+```
+
+## Expansión
+
+#### Demanda:
+
+```{r, echo=FALSE, message=FALSE}
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="wide por droga")
+datos1 <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="gráficos")
+```
+
+```{r, fig.width=11, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+datos_limpios <- datos %>%
+  filter(Region == "Total") %>%
+  select(Año, Cannabis = Marihuana, Cocaine = Cocaína, `Cocaine Pasta Base` = PastaBase) %>%
+  full_join(
+    datos1 %>% select(Año, Hallucinogens = `Alucinógenos`, Synthetics = `Drogas sintéticas`),
+    by = "Año"
+  )
+
+# Armamos el data frame largo para graficar
+datos_grafico <- datos_limpios %>%
+  select(Año, Cannabis, Cocaine, `Cocaine Pasta Base`, Hallucinogens, Synthetics) %>%
+  pivot_longer(cols = -Año, names_to = "Drug", values_to = "valor_real") %>%
+  mutate(
+    Año = as.numeric(Año),
+    valor_grafico = ifelse(Drug == "Marijuana", valor_real, valor_real * 3)
+  )
+
+# Tema gráfico corregido
+theme_grafico <- theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0, color = "black", size = 12),
+    plot.margin = margin(20, 15, 20, 15),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.key.size = unit(0.8, "lines"),
+    legend.key.width = unit(2, "cm"),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9),
+    axis.text.x = element_text(angle = 0),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.y.right = element_text(margin = margin(l = 10))
+  )
+
+# Gráfico final corregido
+ggplot() +
+  # Cannabis (eje izquierdo, sin multiplicar)
+  geom_smooth(
+    data = datos_grafico %>% filter(Drug == "Cannabis"),
+    aes(x = Año, y = valor_real, group = Drug),
+    method = "lm", se = FALSE, color = "gray", linetype = "dashed"
+  ) +
+  geom_line(
+    data = datos_grafico %>% filter(Drug == "Cannabis"),
+    aes(x = Año, y = valor_real, color = Drug), size = 1
+  ) +
+  geom_point(
+    data = datos_grafico %>% filter(Drug == "Cannabis"),
+    aes(x = Año, y = valor_real, color = Drug), size = 2
+  ) +
+  geom_text(
+    data = datos_grafico %>% filter(Drug == "Cannabis"),
+    aes(x = Año, y = valor_real, label = scales::percent(valor_real, accuracy = 0.1)),
+    vjust = -0.8, size = 3, color = "black"
+  ) +
+
+  # Resto de drogas (eje derecho, multiplicadas x3)
+  geom_smooth(
+    data = datos_grafico %>% filter(Drug != "Cannabis"),
+    aes(x = Año, y = valor_grafico, group = Drug),
+    method = "lm", se = FALSE, color = "gray", linetype = "dashed"
+  ) +
+  geom_line(
+    data = datos_grafico %>% filter(Drug != "Cannabis"),
+    aes(x = Año, y = valor_grafico, color = Drug), size = 1
+  ) +
+  geom_point(
+    data = datos_grafico %>% filter(Drug != "Cannabis"),
+    aes(x = Año, y = valor_grafico, color = Drug), size = 2
+  ) +
+  geom_text(
+    data = datos_grafico %>% filter(Drug != "Cannabis"),
+    aes(x = Año, y = valor_grafico, label = scales::percent(valor_real, accuracy = 0.1)),
+    vjust = -0.8, size = 3, color = "black"
+  ) +
+
+  # Escalas y estilos
+  scale_color_manual(
+    values = c(
+      "Cannabis" = "darkseagreen3",
+      "Cocaine" = "skyblue",
+      "Cocaine Pasta Base" = "#FF9D9A",
+      "Hallucinogens" = "gold",
+      "Synthetics" = "orange"
+    ),
+    name = NULL
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    labels = scales::label_percent(scale = 100, accuracy = 1),
+    limits = c(0, 0.16),
+    sec.axis = sec_axis(~./3, labels = scales::label_percent(scale = 100, accuracy = 1))
+  ) +
+  scale_x_continuous(breaks = seq(2002, 2022, 2)) +
+  labs(
+    title = "Past-year drug use prevalence",
+    x = NULL
+  ) +
+  theme_grafico
+
+```
+
+#### Oferta:
+
+```{r, echo=FALSE, message=FALSE}
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Incautaciones_Carabineros")
+```
+
+```{r, fig.width=11, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+orden_regiones <- c(
+  "Arica y Parinacota",
+  "Tarapacá",
+  "Antofagasta",
+  "Atacama",
+  "Coquimbo",
+  "Valparaíso",
+  "RM",
+  "Lib. Bernardo O´Higgins",
+  "Maule",
+  "Ñuble",
+  "Bio Bio",
+  "Araucanía",
+  "De los Ríos",
+  "De los Lagos",
+  "Aysén",
+  "Magallanes",
+  "Total general"
+)
+
+datos <- datos %>%
+  mutate(Región = factor(Región, levels = orden_regiones))
+
+colores_personalizados <- c(
+  "skyblue",  # azul claro
+  "steelblue2",  # azul intenso
+  "#A6CEE3",  # azul pastel reforzado
+  "#D0BBFF",  # violeta
+  "#B07AA1",  # lila fuerte
+  "#CAB2D6",  # lavanda intensa
+  "palegreen3",  # verde lima
+  "seagreen3",  # verde fuerte
+  "mediumaquamarine",  # verde lima
+  "goldenrod2",  # amarillo oscuro
+  "#FFD92F",  # amarillo brillante
+  "orange",  # naranja vibrante
+  "#FDB462",  # durazno
+  "#FF9D9A",  # rojo suave fuerte
+  "#FFB5B8",  # rosado fuerte
+  "#E377C2"
+)
+
+# Filtrar los datos para "Total general"
+datos_total_general <- datos %>%
+  filter(Región == "Total general")
+
+factor_escala_droga <- max(datos$Porcentaje_Droga, na.rm = TRUE) / max(datos_total_general$Droga, na.rm = TRUE)
+
+g1 <- ggplot() +
+  # Gráfico de barras apiladas para porcentaje de drogas por región
+  geom_bar(data = datos %>%
+             filter(Región != "Total general"), 
+           aes(x = as.factor(Año), y = Porcentaje_Droga, fill = Región), 
+           stat = "identity") +
+  
+  # Línea de tendencia escalada para que sea visible junto a las barras
+  geom_line(data = datos_total_general, 
+            aes(x = as.factor(Año), y = Droga * factor_escala_droga), 
+            color = "black", size = 0.6, group = 1) + 
+  
+  # Añadir puntos en la línea de tendencia
+  geom_point(data = datos_total_general, 
+             aes(x = as.factor(Año), y = Droga * factor_escala_droga), 
+             color = "black", size = 1.3) +
+  
+  # Configurar los ejes
+  scale_y_continuous(
+    name = "Proportion",
+    sec.axis = sec_axis(~./factor_escala_droga, name = "Kilograms", labels = scales::comma)
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = NULL,
+    title = "Seizures of Processed Drugs by Carabineros"
+  ) +
+  
+  scale_fill_manual(values = colores_personalizados) +
+  scale_x_discrete(name = NULL) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.y.left = element_text(color = "black"),
+    axis.title.y.right = element_text(color = "black"),
+    axis.text.y.right = element_text(color = "black"),
+    legend.position = "bottom"
+  )
+
+# Asegúrate de que ambas columnas sean numéricas
+datos$Porcentaje_Planta <- as.numeric(datos$Porcentaje_Planta)
+datos_total_general$PlantaMarihuana <- as.numeric(datos_total_general$PlantaMarihuana)
+
+factor_escala_planta <- max(datos$Porcentaje_Planta, na.rm = TRUE) / max(datos_total_general$PlantaMarihuana, na.rm = TRUE)
+
+
+g2 <- ggplot() +
+  # Gráfico de barras apiladas para porcentaje de drogas por región
+  geom_bar(data = datos %>%
+             filter(Región != "Total general"), 
+           aes(x = as.factor(Año), y = Porcentaje_Planta, fill = Región), 
+           stat = "identity") +
+  
+  # Línea de tendencia escalada para que sea visible junto a las barras
+  geom_line(data = datos_total_general, 
+            aes(x = as.factor(Año), y = PlantaMarihuana * factor_escala_planta), 
+            color = "black", size = 0.6, group = 1) + 
+  
+  # Añadir puntos en la línea de tendencia
+  geom_point(data = datos_total_general, 
+             aes(x = as.factor(Año), y = PlantaMarihuana * factor_escala_planta), 
+             color = "black", size = 1.3) +
+  
+  # Configurar los ejes
+  scale_y_continuous(
+    name = "Proportion",
+    sec.axis = sec_axis(~./factor_escala_planta, name = "Units", labels = scales::comma)
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = NULL,
+    title = "Seizure of Cannabis Plants by Carabineros"
+  ) +
+  
+  scale_fill_manual(values = colores_personalizados) +
+  scale_x_discrete(name = NULL) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.y.left = element_text(color = "black"),
+    axis.title.y.right = element_text(color = "black"),
+    axis.text.y.right = element_text(color = "black"),
+    legend.position = "bottom"
+  )
+
+g1 / g2 + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+```
+
+Apéndice:
+
+Tipo de marihuana que consume:
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls())
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="oferta wide")
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- datos %>%
+  filter(Region == "Total", Año >= 2012)
+
+# Gráfico
+ggplot(datos, aes(x = Año)) +
+  
+  # Pressed Cannabis
+  geom_line(aes(y = Prensada, color = "Pressed Cannabis"), size = 0.9) +
+  geom_point(aes(y = Prensada, color = "Pressed Cannabis")) +
+  geom_smooth(aes(y = Prensada), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prensada, label = scales::percent(Prensada, accuracy = 1)), vjust = -0.5, size = 3) +
+  
+  # Green/Creepy Cannabis
+  geom_line(aes(y = `No prensada`, color = "Green/Creepy Cannabis"), size = 0.9) +
+  geom_point(aes(y = `No prensada`, color = "Green/Creepy Cannabis")) +
+  geom_smooth(aes(y = `No prensada`), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = `No prensada`, label = scales::percent(`No prensada`, accuracy = 1)), vjust = -0.5, size = 3) +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Pressed Cannabis" = "skyblue",
+                                "Green/Creepy Cannabis" = "darkseagreen3")) +
+  
+  # Etiquetas y títulos
+  labs(x = NULL, y = NULL, color = NULL, title = "Type of cannabis use in the past year") +
+  
+  # Escalas
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, max(datos$Prensada, 
+                                       datos$`No prensada`, na.rm = TRUE) * 1.2)) +
+  scale_x_continuous(breaks = seq(2012, 2022, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))
+```
+
+Consumo de drogas sintéticas y cannabis por region:
+
+Incautación externa e interna:
+
+```{r, echo=FALSE, message=FALSE}
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Incautacion_Aduana_agregado")
+datos2 <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Decomisos_SPD")
+datos3 <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Incautaciones_Carabineros")
+```
+
+```{r, fig.width=11, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+paleta_colores <- c(
+  "Synthetic" = "gold",  # Sinteticas -> Synthetic
+  "Cannabis" = "palegreen3",  # Marihuana -> Cannabis
+  "Cocaine" = "steelblue2",   # Cocaina -> Cocaine
+  "Cocaine Paste" = "skyblue",    # PastaBase -> Cocaine Paste
+  "Opioids" = "mediumaquamarine",  # Opioides -> Opioids
+  "Hallucinogens" = "goldenrod2"   # Alucinogenos -> Hallucinogens
+)
+
+# Cambiar los nombres de las categorías de drogas a su equivalente en inglés
+datos$CategoriaDroga <- recode(datos$CategoriaDroga, 
+                               "Sinteticas" = "Synthetic", 
+                               "Marihuana" = "Cannabis", 
+                               "Cocaina" = "Cocaine", 
+                               "PastaBase" = "Cocaine Paste", 
+                               "Opioides" = "Opioids", 
+                               "Alucinogenos" = "Hallucinogens")
+
+# Crear el gráfico con las traducciones
+g1 <- ggplot(datos, aes(x = factor(Año), y = Porcentaje, fill = CategoriaDroga)) +
+  geom_bar(stat = "identity") +  # Usar barras apiladas
+  labs(
+    title = "Drug Seizure by Customs",
+    x = NULL,
+    y = NULL,
+    fill = NULL
+  ) +
+  theme_minimal() +  # Estilo más limpio
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)  # Rotar etiquetas del eje x
+  ) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_fill_manual(values = paleta_colores)
+
+# Reemplazar los sufijos y traducir las categorías de drogas
+datos_nueva_long <- datos2 %>%
+  select(Año, Cocaina_Pct, PastaBase_Pct, Marihuana_Pct, Extasis_Pct, Heroina_Pct) %>%
+  pivot_longer(cols = -Año, 
+               names_to = "CategoriaDroga", 
+               values_to = "Porcentaje")
+datos_nueva_long$CategoriaDroga <- gsub("_Pct", "", datos_nueva_long$CategoriaDroga)
+
+# Traducir las categorías de drogas al inglés
+datos_nueva_long$CategoriaDroga <- recode(datos_nueva_long$CategoriaDroga, 
+                                           "Marihuana" = "Cannabis", 
+                                           "Cocaina" = "Cocaine", 
+                                           "PastaBase" = "Cocaine Paste", 
+                                           "Extasis" = "Ecstasy", 
+                                           "Heroina" = "Heroin")
+
+# Crear el gráfico de barras apiladas con las traducciones
+g2 <- ggplot(datos_nueva_long, aes(x = factor(Año), y = Porcentaje, fill = CategoriaDroga)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Drug Seizures by SPD",
+    fill = NULL
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_fill_manual(values = c("Cocaine" = "steelblue2", 
+                               "Cocaine Paste" = "skyblue", 
+                               "Cannabis" = "palegreen3", 
+                               "Ecstasy" = "gold", 
+                               "Heroin" = "mediumaquamarine"))  # Colores personalizados
+
+datos3 <- datos3 %>%
+  filter(Región == "Total general") %>%
+  mutate(
+    Cocaine = Cocaina / Droga,
+    `Cocaine Paste` = PastaBase / Droga,
+    Cannabis = Marihuana / Droga
+  )
+
+# Convertir a formato largo
+datos3_long <- datos3 %>%
+  select(Año, Cocaine, `Cocaine Paste`, Cannabis) %>%
+  pivot_longer(cols = -Año,
+               names_to = "DrogaTipo",
+               values_to = "Porcentaje")
+
+# Gráfico de barras apiladas
+g3 <- ggplot(datos3_long, aes(x = factor(Año), y = Porcentaje, fill = DrogaTipo)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Drug Seizures by Carabineros",
+    x = NULL,
+    y = NULL,
+    fill = NULL
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_fill_manual(values = c(
+    "Cocaine" = "steelblue2",
+    "Cocaine Paste" = "skyblue",
+    "Cannabis" = "palegreen3"
+  ))
+
+
+grid.arrange(g1, g2, g3, ncol = 1)
+```
+
+## Fragmentación
+
+Ingresos a Gendarmería delitos de droga y complejidad criminal por comuna de domicilio y nacionalidad (diversificación de actores):
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "Gendarmería2")
+datos2 <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "Gendarmería2")
+```
+
+```{r, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- datos %>%
+  filter(Region != "Total")
+
+datos <- datos %>%
+  group_by(Region, Año) %>%
+  summarise(
+    total_droga = sum(Droga, na.rm = TRUE),
+    total_complejidad2 = sum(Complejidad2, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(Año) %>%
+  mutate(
+    porcentaje_droga = (total_droga / sum(total_droga)),
+    porcentaje_complejidad2 = (total_complejidad2 / sum(total_complejidad2))
+  ) %>%
+  ungroup() %>%
+  arrange(Año)
+
+linea_tendencia <- datos2 %>%
+  filter(Region == "Total") %>%
+  select(Año, Delito_droga, Delito_complejidad2) %>%
+  mutate(
+    Delito_droga = Delito_droga / 100,
+    Delito_complejidad2 = Delito_complejidad2 / 100
+  )
+
+orden_regiones <- c(
+  "Arica y Parinacota",
+  "Tarapacá",
+  "Antofagasta",
+  "Atacama",
+  "Coquimbo",
+  "Valparaíso",
+  "RM",
+  "Lib. Bernardo O´Higgins",
+  "Maule",
+  "Ñuble",
+  "Bio Bio",
+  "Araucanía",
+  "De los Ríos",
+  "De los Lagos",
+  "Aysén",
+  "Magallanes",
+  "Total general"
+)
+
+datos <- datos %>%
+  mutate(Region = factor(Region, levels = orden_regiones))
+
+colores_personalizados <- c(
+  "skyblue",  # azul claro
+  "steelblue2",  # azul intenso
+  "#A6CEE3",  # azul pastel reforzado
+  "#D0BBFF",  # violeta
+  "#B07AA1",  # lila fuerte
+  "#CAB2D6",  # lavanda intensa
+  "palegreen3",  # verde lima
+  "seagreen3",  # verde fuerte
+  "mediumaquamarine",  # verde lima
+  "goldenrod2",  # amarillo oscuro
+  "#FFD92F",  # amarillo brillante
+  "orange",  # naranja vibrante
+  "#FDB462",  # durazno
+  "#FF9D9A",  # rojo suave fuerte
+  "#FFB5B8",  # rosado fuerte
+  "#E377C2"
+)
+
+max_droga <- 0.23603695  # o usa max(linea_tendencia$delito_droga, na.rm = TRUE)
+
+g1 <- ggplot() +
+  geom_bar(data = datos, aes(x = factor(Año), y = porcentaje_droga, fill = Region), 
+           stat = "identity") +
+  geom_line(data = linea_tendencia, 
+            aes(x = factor(Año), y = Delito_droga / max_droga, group = 1),
+            color = "black", size = 0.6) +
+  scale_y_continuous(
+    name = "Proportion",
+    sec.axis = sec_axis(~ . * max_droga, name = "Percentage drug offenses", labels = scales::percent_format(accuracy = 1))
+  ) +
+  labs(x = NULL, 
+       fill = NULL,
+       title = "Admission to Gendarmería for drug offenses by region") +
+  theme_minimal() +
+  scale_fill_manual(values = colores_personalizados) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.text = element_text(size = 8)
+  )
+
+
+max_complejidad2 <- 0.021215183  # o usa max(linea_tendencia$delito_complejidad2, na.rm = TRUE)
+
+g2 <- ggplot() +
+  geom_bar(data = datos, aes(x = factor(Año), y = porcentaje_complejidad2, fill = Region), 
+           stat = "identity") +
+  geom_line(data = linea_tendencia, 
+            aes(x = factor(Año), y = Delito_complejidad2 / max_complejidad2, group = 1),
+            color = "black", size = 0.6) +
+  scale_y_continuous(
+    name = "Proportion",
+    sec.axis = sec_axis(~ . * max_complejidad2, name = "Percentage drug and firearms law offenses", labels = scales::percent_format(accuracy = 0.1))
+  ) +
+  labs(x = NULL, 
+       fill = NULL,
+       title = "Admission to Gendarmería for drug and firearms law offenses by region") +
+  theme_minimal() +
+  scale_fill_manual(values = colores_personalizados) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.text = element_text(size = 8)
+  )
+
+g1 / g2 + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "Gendarmería_Nacionalidad")
+datos2 <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "Gendarmería2")
+```
+
+```{r, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Define los colores específicos para las nacionalidades
+colores_nacionalidades <- c(
+  "ARGENTINA" = "skyblue",           # Azul para Argentina
+  "BOLIVIANA" = "steelblue2",         # Morado para Bolivia
+  "BRASILEÑA" = "#B07AA1",           # Rosado para Brasil
+  "CHILENA" = "seagreen3",            # Verde para Chile
+  "COLOMBIANA" = "mediumaquamarine",        # Amarillo para Colombia
+  "ECUATORIANA" = "palegreen3",       # Naranjo para Ecuador
+  "PARAGUAYA" = "orange",    # Azul para Paraguay
+  "PERUANA" = "gold",        # Verde para Perú
+  "URUGUAYA" = "#FFB5B8",           # Blanco para Uruguay
+  "VENEZOLANA" = "#D0BBFF",         # Negro para Venezuela
+  "default" = "gray"              # Gris para el resto de las nacionalidades
+)
+
+linea_tendencia <- datos2 %>%
+  filter(Region == "Total") %>%
+  select(Año, Delito_droga, Delito_complejidad2) %>%
+  mutate(
+    Delito_droga = Delito_droga / 100,
+    Delito_complejidad2 = Delito_complejidad2 / 100
+  )
+
+g1 <- ggplot() +
+  geom_bar(data = datos, aes(x = factor(Año), y = porcentaje_droga, fill = NACIONALIDAD), 
+           stat = "identity") +
+  geom_line(data = linea_tendencia, 
+            aes(x = factor(Año), y = Delito_droga / max_droga, group = 1),
+            color = "black", size = 0.6) +
+  scale_y_continuous(
+    name = "Proportion",
+    sec.axis = sec_axis(~ . * max_droga, name = "Percentage drug offenses", labels = scales::percent_format(accuracy = 1))
+  ) +
+  labs(x = NULL, 
+       fill = NULL,
+       title = "Admission to Gendarmería for drug offenses by nacionality") +
+  theme_minimal() +
+  scale_fill_manual(values = colores_nacionalidades) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.text = element_text(size = 8)
+  )
+
+
+max_complejidad2 <- 0.021215183  # o usa max(linea_tendencia$delito_complejidad2, na.rm = TRUE)
+
+g2 <- ggplot() +
+  geom_bar(data = datos, aes(x = factor(Año), y = porcentaje_complejidad2, fill = NACIONALIDAD), 
+           stat = "identity") +
+  geom_line(data = linea_tendencia, 
+            aes(x = factor(Año), y = Delito_complejidad2 / max_complejidad2, group = 1),
+            color = "black", size = 0.6) +
+  scale_y_continuous(
+    name = "Proportion",
+    sec.axis = sec_axis(~ . * max_complejidad2, name = "Percentage drug and firearms law offenses", labels = scales::percent_format(accuracy = 0.1))
+  ) +
+  labs(x = NULL, 
+       fill = NULL,
+       title = "Admission to Gendarmería for drug and firearms law offenses by nacionality") +
+  theme_minimal() +
+  scale_fill_manual(values = colores_nacionalidades) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.text = element_text(size = 8)
+  )
+
+g1 / g2 + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+```
+
+Tráfico vs Microtráfico (diversificación de actores):
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "CasosPoliciales_Drogas")
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(datos, aes(x = Año)) +
+  
+  # Drug trafficking
+  geom_line(aes(y = Prop_Trafico, color = "Drug trafficking"), size = 0.9) +
+  geom_point(aes(y = Prop_Trafico, color = "Drug trafficking")) +
+  geom_smooth(aes(y = Prop_Trafico), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Trafico, label = scales::percent(Prop_Trafico, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +  # Solo porcentaje, sin significancia
+  
+  # Small-scale drug trafficking
+  geom_line(aes(y = Prop_Microtrafico, color = "Small-scale drug trafficking"), size = 0.9) +
+  geom_point(aes(y = Prop_Microtrafico, color = "Small-scale drug trafficking")) +
+  geom_smooth(aes(y = Prop_Microtrafico), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Microtrafico, label = scales::percent(Prop_Microtrafico, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +  # Solo porcentaje, sin significancia
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Drug trafficking" = "gold",
+                                "Small-scale drug trafficking" = "orange")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = NULL, color = NULL, title = "Drug offenses") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1), limits = c(0, 0.6)) + 
+  scale_x_continuous(breaks = seq(2005, 2024, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))
+```
+
+Apéndice: Edad Ingreso a Gendarmería delitos de droga y complejidad criminal (Esto podria ser violencia en realidad)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "Gendarmería_Edad")
+```
+
+```{r, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+datos_filtrados <- datos %>% filter(!is.na(total_droga))
+
+ggplot(datos_filtrados, aes(x = Edad, y = total_droga)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ Año) +
+  labs(title = "Distribución de edad por año (casos de droga)",
+       x = "Edad", y = "Total casos") +
+  theme_minimal()
+```
+
+```{r, fig.width=10, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+datos_filtrados <- datos %>% filter(!is.na(total_complejidad2))
+
+ggplot(datos_filtrados, aes(x = Edad, y = total_complejidad2)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ Año) +
+  labs(title = "Distribución de edad por año (casos de droga)",
+       x = "Edad", y = "Total casos") +
+  theme_minimal()
+```
+
+## Violencia
+
+Delitos de Armas:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "CasosPoliciales_Armas")
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+datos_grafico <- datos %>%
+  select(Año, Prop_Disparo_injustificado, Prop_Otras_infracciones_ley_de_armas, Prop_Porte_posesión_de_armas_explosivos, Prop_Porte_arma_cortante_punzante) %>%
+  pivot_longer(cols = -Año, names_to = "Armas", values_to = "valor_real") %>%
+  mutate(
+    Año = as.numeric(Año),
+    Armas = recode(
+      Armas,
+      "Prop_Disparo_injustificado" = "Unjustified firearm discharge",
+      "Prop_Otras_infracciones_ley_de_armas" = "Other offenses",
+      "Prop_Porte_posesión_de_armas_explosivos" = "Possession of firearms/explosives",
+      "Prop_Porte_arma_cortante_punzante" = "Possession of sharp weapons"
+    ),
+    valor_grafico = valor_real
+  )
+
+
+# Tema gráfico corregido
+theme_grafico <- theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0, color = "black", size = 12),
+    plot.margin = margin(20, 15, 20, 15),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.key.size = unit(0.8, "lines"),
+    legend.key.width = unit(2, "cm"),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9),
+    axis.text.x = element_text(angle = 0),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.y.right = element_text(margin = margin(l = 10))
+  )
+
+# Gráfico final corregido
+ggplot(datos_grafico, aes(x = Año, y = valor_grafico, color = Armas, group = Armas)) +
+  geom_smooth(method = "lm", se = FALSE, color = "gray", linetype = "dashed") +  # <- línea de tendencia
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  scale_color_manual(
+    values = c(
+      "Unjustified firearm discharge" = "skyblue",
+  "Other offenses" = "darkseagreen3",
+  "Possession of firearms/explosives" = "gold",
+  "Possession of sharp weapons" = "orange"
+    ),
+    name = NULL
+  ) +
+  scale_y_continuous(
+  name = NULL,
+  labels = scales::label_percent(scale = 100, accuracy = 1),
+  limits = c(0, 0.75)
+)+
+  scale_x_continuous(breaks = seq(2005, 2024, 2)) +
+  labs(
+    title = "Offenses under the Firearms Law",
+    x = NULL
+  ) +
+  theme_grafico +
+  geom_text(
+    aes(label = scales::percent(valor_real, accuracy = 0.1)),
+    vjust = -0.8,
+    size = 3,
+    color = "black"
+  )
+
+```
+
+Incautación Armas:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "Incautaciones Armas Sumadas")
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+colores_personalizados <- c(
+  "Replica weapons" = "skyblue",
+  "Parts, components, and accessories" = "steelblue2",
+  "Ammunition" = "seagreen3",
+  "Explosives" = "mediumaquamarine",
+  "Self-defense items" = "#B07AA1",
+  "Homemade weapons" = "#D0BBFF",
+  "Firearms" = "orange",
+  "Concealed disguised weapon" = "#FFD92F",
+  "Blank-firing guns" = "#FF9D9A",
+  "Air guns" = "#FFB5B8",
+  "Converted firearm" = "mediumorchid",
+  "Modified firearm" = "#A6CEE3"
+)
+
+datos_armas_long <- datos %>%
+  pivot_longer(
+    cols = c(
+      `Replicas`, 
+      `Partes-Piezas-Accesorios`, 
+      Municion, 
+      Explosivos,
+      `Elementos de Autoproteccion`, 
+      `Hechizas`, 
+      `Arma de Fuego`,
+      `Arma Fantasia`, 
+      `Arma de Fogueo`, 
+      `Arma de aire comprimido`,
+      Adaptada,
+      Modificada
+    ),
+    names_to = "Tipo_arma",
+    values_to = "Cantidad"
+  ) %>%
+  mutate(
+    porcentaje = Cantidad / Total,
+    Tipo_arma_en = case_when(
+      Tipo_arma == "Replicas" ~ "Replica weapons",
+      Tipo_arma == "Partes-Piezas-Accesorios" ~ "Parts, components, and accessories",
+      Tipo_arma == "Municion" ~ "Ammunition",
+      Tipo_arma == "Explosivos" ~ "Explosives",
+      Tipo_arma == "Elementos de Autoproteccion" ~ "Self-defense items",
+      Tipo_arma == "Hechizas" ~ "Homemade weapons",
+      Tipo_arma == "Arma de Fuego" ~ "Firearms",
+      Tipo_arma == "Arma Fantasia" ~ "Concealed disguised weapon",
+      Tipo_arma == "Arma de Fogueo" ~ "Blank-firing guns",
+      Tipo_arma == "Arma de aire comprimido" ~ "Air guns",
+      Tipo_arma == "Adaptada" ~ "Converted firearm",
+      Tipo_arma == "Modificada" ~ "Modified firearm",
+      TRUE ~ Tipo_arma  # por si queda algún valor inesperado
+    )
+  )
+
+totales_g1 <- datos %>%
+  group_by(año) %>%
+  summarise(total_armas = unique(Total)) 
+
+max_total_g1 <- max(totales_g1$total_armas, na.rm = TRUE)
+totales_g1 <- totales_g1 %>%
+  mutate(escalado = total_armas / max_total_g1)
+
+ggplot(datos_armas_long, aes(x = factor(año), y = porcentaje, fill = Tipo_arma_en)) +
+  geom_bar(stat = "identity") +
+  geom_line(data = totales_g1, aes(x = factor(año), y = escalado, group = 1),
+            color = "black", size = 0.6, linetype = "solid", inherit.aes = FALSE) +
+  scale_y_continuous(
+    name = NULL,
+    sec.axis = sec_axis(~ . * max_total_g1, name = "Total units seized")
+  ) +
+  scale_fill_manual(values = colores_personalizados) +
+  labs(title = "Firearm seizures by the PDI", x = NULL, fill = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom")
+```
+
+Imputado desconocido:
+
+Muertes y lesiones en cárcel:
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Muertes_lesiones")
+```
+
+```{r, fig.width=11, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+datos_grafico <- datos %>%
+  filter(Region == "Total") %>%
+  select(
+    Año,
+    `Death due to assaults` = p_muertes,
+    `Injuries from physical assault` = p_agresion1,
+    `Injuries from blunt object assault` = p_agresion2,
+    `Injuries caused by assault with a sharp object` = p_agresion3,
+    `Sexual assault` = p_agre_sexual
+  ) %>%
+  pivot_longer(cols = -Año, names_to = "Tipo", values_to = "valor_real") %>%
+  mutate(
+    eje = ifelse(Tipo %in% c("Death due to assaults", "Sexual assault"), "derecha", "izquierda"),
+    valor_grafico = ifelse(eje == "derecha", valor_real * 10, valor_real)
+  )
+
+# Tema gráfico corregido
+theme_grafico <- theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0, color = "black", size = 12),
+    plot.margin = margin(20, 15, 20, 15),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.key.size = unit(0.8, "lines"),
+    legend.key.width = unit(2, "cm"),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9),
+    axis.text.x = element_text(angle = 0),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.y.right = element_text(margin = margin(l = 10))
+  )
+
+ggplot() +
+  # Lesiones (eje izquierdo, sin multiplicar)
+  geom_smooth(
+    data = datos_grafico %>% filter(eje == "izquierda"),
+    aes(x = Año, y = valor_real, group = Tipo),
+    method = "lm", se = FALSE, color = "gray", linetype = "dashed"
+  ) +
+  geom_line(
+    data = datos_grafico %>% filter(eje == "izquierda"),
+    aes(x = Año, y = valor_real, color = Tipo), size = 1
+  ) +
+  geom_point(
+    data = datos_grafico %>% filter(eje == "izquierda"),
+    aes(x = Año, y = valor_real, color = Tipo), size = 2
+  ) +
+  geom_text(
+    data = datos_grafico %>% filter(eje == "izquierda"),
+    aes(x = Año, y = valor_real, label = scales::percent(valor_real, accuracy = 0.1)),
+    vjust = -0.8, size = 3, color = "black"
+  ) +
+
+  # Muertes y agresiones sexuales (eje derecho, multiplicadas por 10)
+  geom_smooth(
+    data = datos_grafico %>% filter(eje == "derecha"),
+    aes(x = Año, y = valor_grafico, group = Tipo),
+    method = "lm", se = FALSE, color = "gray", linetype = "dashed"
+  ) +
+  geom_line(
+    data = datos_grafico %>% filter(eje == "derecha"),
+    aes(x = Año, y = valor_grafico, color = Tipo), size = 1
+  ) +
+  geom_point(
+    data = datos_grafico %>% filter(eje == "derecha"),
+    aes(x = Año, y = valor_grafico, color = Tipo), size = 2
+  ) +
+  geom_text(
+    data = datos_grafico %>% filter(eje == "derecha"),
+    aes(x = Año, y = valor_grafico, label = scales::percent(valor_real, accuracy = 0.01)),
+    vjust = -0.8, size = 3, color = "black"
+  ) +
+
+  # Estética y escalas
+  scale_color_manual(
+    values = c(
+      "Injuries from physical assault" = "skyblue",
+      "Injuries from blunt object assault" = "gold",
+      "Injuries caused by assault with a sharp object" = "orange",
+      "Death due to assaults" = "darkseagreen3",
+      "Sexual assault" = "mediumorchid"
+    ),
+    name = NULL
+  ) +
+  scale_y_continuous(
+    name = NULL,
+    labels = scales::label_percent(scale = 100, accuracy = 1),
+    limits = c(0, 0.05),
+    sec.axis = sec_axis(~./10, name = NULL, labels = scales::label_percent(scale = 100, accuracy = 0.01))
+  ) +
+  scale_x_continuous(breaks = seq(min(datos_grafico$Año), max(datos_grafico$Año), 2)) +
+  labs(
+    title = "Injuries, deaths, and sexual assaults in prisons",
+    x = NULL
+  ) +
+   theme_grafico +
+  # Esta es la parte clave:
+  guides(
+    color = guide_legend(
+      nrow = 3,               # Fuerza 3 filas en la leyenda
+      byrow = TRUE,           # Organiza por filas
+      override.aes = list(
+        size = 2,             # Aumenta tamaño de símbolos para mejor visibilidad
+        linetype = 1          # Asegura línea continua en leyenda
+      )
+    )
+  )
+```

@@ -1,0 +1,1125 @@
+---
+title: "Mercado drogas"
+format: pdf
+editor: visual
+---
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls())
+library(haven)
+library(dplyr)
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(gridExtra)
+library(grid)
+options(scipen = 999)
+```
+
+```{r, echo=FALSE, message=FALSE}
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="wide por droga")
+datos1 <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="gráficos")
+```
+
+### Consumo
+
+```{r, fig.width=11, fig.height=8, echo=FALSE, message=FALSE, warning=FALSE}
+
+comparar_anios <- function(datos, variable) {
+  datos <- datos %>% arrange(Año)
+  
+  resultados <- datos %>%
+    mutate(
+      p_value = c(NA, sapply(2:n(), function(i) {
+        if (is.na(datos[[variable]][i]) | is.na(datos[[variable]][i - 1])) {
+          return(NA)  # Evitar cálculos con NA
+        }
+        
+        # Construir tabla de frecuencias
+        tabla <- matrix(c(
+          datos[[variable]][i] * 1000, (1 - datos[[variable]][i]) * 1000,
+          datos[[variable]][i - 1] * 1000, (1 - datos[[variable]][i - 1]) * 1000
+        ), nrow = 2, byrow = TRUE)
+        
+        # Usar Fisher si algún valor es menor a 5
+        if (any(tabla < 5)) {
+          test <- fisher.test(tabla)
+        } else {
+          test <- chisq.test(tabla)
+        }
+        
+        return(test$p.value)
+      })),
+      sig = case_when(
+        p_value < 0.01 ~ "***",
+        p_value < 0.05 ~ "**",
+        p_value < 0.1 ~ "*",
+        TRUE ~ ""
+      )
+    )
+  
+  return(resultados)
+}
+
+
+marihuana_res <- comparar_anios(datos %>% filter(Region == "Total", !is.na(Marihuana)), "Marihuana")
+cocaina_res <- comparar_anios(datos %>% filter(Region == "Total", !is.na(Cocaínas)), "Cocaínas")
+alucino_res <- comparar_anios(datos1 %>% filter(!is.na(Alucinógenos)), "Alucinógenos")
+sinteticas_res <- comparar_anios(datos1 %>% filter(!is.na(`Drogas sintéticas`)), "Drogas sintéticas")
+
+
+theme_wide <- theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.margin = margin(15, 10, 15, 10),
+    panel.grid.minor = element_blank()
+  )
+
+# Gráfico de Marihuana
+g1 <- marihuana_res %>%
+  ggplot(aes(x = Año, y = Marihuana)) +
+  geom_line(color = "darkgreen", size = 0.9) +
+  geom_point(color = "darkgreen") +
+  geom_text(aes(label = round(Marihuana * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(label = sig), vjust = -1, size = 5, color = "red") +  # Asteriscos
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "gray60") +
+  labs(x = "", y = "") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, 0.16),
+                     breaks = seq(0, 0.16, 0.05)) +
+  scale_x_continuous(breaks = seq(2002, 2022, 2)) +
+  ggtitle("Marihuana") +
+  theme_wide
+
+# Gráfico de Cocaína
+g2 <- cocaina_res %>%
+  ggplot(aes(x = Año, y = Cocaínas)) +
+  geom_line(color = "#8B4513", size = 0.9) +
+  geom_point(color = "#8B4513") +
+  geom_text(aes(label = round(Cocaínas * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(label = sig), vjust = -1, size = 5, color = "red") +  # Asteriscos
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "gray60") +
+  labs(x = "", y = "") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, 0.05),
+                     breaks = seq(0, 0.05, 0.01)) +
+  scale_x_continuous(breaks = seq(2002, 2022, 2)) +
+  ggtitle("Cocaínas") +
+  theme_wide
+
+
+# Gráfico de Alucinógenos
+g3 <- alucino_res %>%
+  ggplot(aes(x = Año, y = Alucinógenos)) +
+  geom_line(color = "darkgoldenrod", size = 0.9) +
+  geom_point(color = "darkgoldenrod") +
+  geom_text(aes(label = round(Alucinógenos * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(label = sig), vjust = -1, size = 5, color = "red") +  # Asteriscos
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "gray60") +
+  labs(x = "", y = "") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, 0.05),
+                     breaks = seq(0, 0.05, 0.01)) +
+  scale_x_continuous(breaks = seq(2002, 2022, 2)) +
+  ggtitle("Alucinógenos") +
+  theme_wide
+
+
+# Gráfico de Drogas Sintéticas
+g4 <- sinteticas_res %>%
+  ggplot(aes(x = Año, y = `Drogas sintéticas`)) +
+  geom_line(color = "#FFB000", size = 0.9) +
+  geom_point(color = "#FFB000") +
+  geom_text(aes(label = round(`Drogas sintéticas` * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(label = sig), vjust = -1, size = 5, color = "red") +  # Asteriscos
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "gray60") +
+  labs(x = "", y = "") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, 0.05),
+                     breaks = seq(0, 0.05, 0.01)) +
+  scale_x_continuous(breaks = seq(2002, 2022, 2)) +
+  ggtitle("Drogas Sintéticas") +
+  theme_wide
+
+grid.arrange(g1, g2, g3, g4, ncol = 2)
+```
+
+### Tratamiento
+
+```{r, echo=FALSE, warning=FALSE}
+rm(list = ls())
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Tratamiento")
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Crear función para evaluar significancia con prop.test()
+comparar_anios <- function(variable) {
+  sig <- rep("", length(variable))
+  for (i in 2:length(variable)) {
+    test <- prop.test(x = c(variable[i-1], variable[i]) * 1000, 
+                      n = c(1000, 1000)) # Se asume una base de 1000 casos
+    if (test$p.value < 0.1) sig[i] <- "*"
+    if (test$p.value < 0.05) sig[i] <- "**"
+    if (test$p.value < 0.01) sig[i] <- "***"
+  }
+  return(sig)
+}
+
+# Aplicar la función a cada droga
+datos <- datos %>%
+  filter(Región == "Total") %>%
+  arrange(Año) %>%
+  mutate(
+    sig_marihuana = comparar_anios(Marihuana),
+    sig_cocaina = comparar_anios(Cocaina),
+    sig_pasta = comparar_anios(`Pasta Base`)
+  )
+
+# Gráfico
+ggplot(datos, aes(x = Año)) +
+  
+  # Marihuana
+  geom_line(aes(y = Marihuana, color = "Marihuana"), size = 0.9) +
+  geom_point(aes(y = Marihuana, color = "Marihuana")) +
+  geom_smooth(aes(y = Marihuana), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Marihuana, label = round(Marihuana * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(y = Marihuana, label = sig_marihuana), vjust = -1.5, size = 5, color = "red") +
+  
+  # Cocaína
+  geom_line(aes(y = Cocaina, color = "Cocaína"), size = 0.9) +
+  geom_point(aes(y = Cocaina, color = "Cocaína")) +
+  geom_smooth(aes(y = Cocaina), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Cocaina, label = round(Cocaina * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(y = Cocaina, label = sig_cocaina), vjust = -1.5, size = 5, color = "red") +
+  
+  # Pasta Base
+  geom_line(aes(y = `Pasta Base`, color = "Pasta Base"), size = 0.9) +
+  geom_point(aes(y = `Pasta Base`, color = "Pasta Base")) +
+  geom_smooth(aes(y = `Pasta Base`), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = `Pasta Base`, label = round(`Pasta Base` * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(y = `Pasta Base`, label = sig_pasta), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Marihuana" = "darkgreen",
+                                "Cocaína" = "#FFB000",
+                                "Pasta Base" = "#8B4513")) +
+  
+  # Etiquetas y títulos
+  labs(x = NULL, y = NULL, color= NULL) +
+  
+  # Escalas
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, max(datos$Marihuana, datos$Cocaina, 
+                                       datos$`Pasta Base`, na.rm = TRUE) * 1.2)) +
+  scale_x_continuous(breaks = seq(2010, 2022, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2))) 
+```
+
+### Exposición a Oferta
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls())
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="oferta wide")
+```
+
+```{r, fig.width=11, fig.height=8, echo=FALSE, message=FALSE, warning=FALSE}
+
+comparar_anios <- function(datos, variable) {
+  datos <- datos %>% arrange(Año)
+  
+  resultados <- datos %>%
+    mutate(
+      p_value = c(NA, sapply(2:n(), function(i) {
+        if (is.na(datos[[variable]][i]) | is.na(datos[[variable]][i - 1])) {
+          return(NA)  # Evitar cálculos con NA
+        }
+        
+        # Construir tabla de frecuencias
+        tabla <- matrix(c(
+          datos[[variable]][i] * 1000, (1 - datos[[variable]][i]) * 1000,
+          datos[[variable]][i - 1] * 1000, (1 - datos[[variable]][i - 1]) * 1000
+        ), nrow = 2, byrow = TRUE)
+        
+        # Usar Fisher si algún valor es menor a 5
+        if (any(tabla < 5)) {
+          test <- fisher.test(tabla)
+        } else {
+          test <- chisq.test(tabla)
+        }
+        
+        return(test$p.value)
+      })),
+      sig = case_when(
+        p_value < 0.01 ~ "***",
+        p_value < 0.05 ~ "**",
+        p_value < 0.1 ~ "*",
+        TRUE ~ ""
+      )
+    )
+  
+  return(resultados)
+}
+
+
+marihuana_res <- comparar_anios(datos %>% filter(Region == "Total", !is.na(Marihuana)), "Marihuana")
+cocaina_res <- comparar_anios(datos %>% filter(Region == "Total", !is.na(Cocaína)), "Cocaína")
+pasta_res <- comparar_anios(datos %>% filter(Region == "Total", !is.na(`Pasta Base`)), "Pasta Base")
+extasis_res <- comparar_anios(datos %>% filter(Region == "Total", !is.na(Extasis)), "Extasis")
+
+
+theme_wide <- theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.margin = margin(15, 10, 15, 10),
+    panel.grid.minor = element_blank()
+  )
+
+# Gráfico de Marihuana
+g1 <- marihuana_res %>%
+  ggplot(aes(x = Año, y = Marihuana)) +
+  geom_line(color = "darkgreen", size = 0.9) +
+  geom_point(color = "darkgreen") +
+  geom_text(aes(label = round(Marihuana * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(label = sig), vjust = -1, size = 5, color = "red") +  # Asteriscos
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "gray60") +
+  labs(x = "", y = "") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, 0.25),
+                     breaks = seq(0, 0.25, 0.05)) +
+  scale_x_continuous(breaks = seq(2002, 2022, 2)) +
+  ggtitle("Marihuana") +
+  theme_wide
+
+# Gráfico de Cocaína
+g2 <- cocaina_res %>%
+  ggplot(aes(x = Año, y = Cocaína)) +
+  geom_line(color = "#8B4513", size = 0.9) +
+  geom_point(color = "#8B4513") +
+  geom_text(aes(label = round(Cocaína * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(label = sig), vjust = -1, size = 5, color = "red") +  # Asteriscos
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "gray60") +
+  labs(x = "", y = "") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, 0.07),
+                     breaks = seq(0, 0.07, 0.01)) +
+  scale_x_continuous(breaks = seq(2002, 2022, 2)) +
+  ggtitle("Cocaína") +
+  theme_wide
+
+
+# Gráfico de Pasta Base
+g3 <- pasta_res %>%
+  ggplot(aes(x = Año, y = `Pasta Base`)) +
+  geom_line(color = "darkgoldenrod", size = 0.9) +
+  geom_point(color = "darkgoldenrod") +
+  geom_text(aes(label = round(`Pasta Base` * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(label = sig), vjust = -1, size = 5, color = "red") +  # Asteriscos
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "gray60") +
+  labs(x = "", y = "") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, 0.04),
+                     breaks = seq(0, 0.04, 0.01)) +
+  scale_x_continuous(breaks = seq(2002, 2022, 2)) +
+  ggtitle("Pasta Base") +
+  theme_wide
+
+
+# Gráfico de Extasis
+g4 <- extasis_res %>%
+  ggplot(aes(x = Año, y = Extasis)) +
+  geom_line(color = "#FFB000", size = 0.9) +
+  geom_point(color = "#FFB000") +
+  geom_text(aes(label = round(Extasis * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(label = sig), vjust = -1, size = 5, color = "red") +  # Asteriscos
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "gray60") +
+  labs(x = "", y = "") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, 0.03),
+                     breaks = seq(0, 0.03, 0.01)) +
+  scale_x_continuous(breaks = seq(2002, 2022, 2)) +
+  ggtitle("Extasis") +
+  theme_wide
+
+grid.arrange(g1, g2, g3, g4, ncol = 2)
+```
+
+### Tipo de Marihuana que consume
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Función para evaluar significancia con prop.test()
+comparar_anios <- function(variable) {
+  sig <- rep("", length(variable))  # Vector del mismo tamaño que la variable
+  
+  for (i in 2:length(variable)) {
+    # Si hay NA en la comparación, salta esa iteración
+    if (is.na(variable[i-1]) || is.na(variable[i]) || variable[i-1] == 0 || variable[i] == 0) {
+      next
+    }
+    
+    test <- prop.test(x = c(variable[i-1], variable[i]) * 1000, 
+                      n = c(1000, 1000)) # Se asume una base de 1000 casos
+    
+    if (test$p.value < 0.1) sig[i] <- "*"
+    if (test$p.value < 0.05) sig[i] <- "**"
+    if (test$p.value < 0.01) sig[i] <- "***"
+  }
+  
+  return(sig)
+}
+
+# Aplicar la función asegurando que mantiene el tamaño original de datos
+datos <- datos %>%
+  filter(Region == "Total") %>%
+  arrange(Año) %>%
+  mutate(
+    sig_prensada = comparar_anios(Prensada),
+    sig_noprensada = comparar_anios(`No prensada`)
+  )
+
+datos <- datos %>%
+  filter(Año >= 2012)
+
+# Gráfico
+ggplot(datos, aes(x = Año)) +
+  
+  # Prensada
+  geom_line(aes(y = Prensada, color = "Prensada"), size = 0.9) +
+  geom_point(aes(y = Prensada, color = "Prensada")) +
+  geom_smooth(aes(y = Prensada), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prensada, label = round(Prensada * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(y = Prensada, label = sig_prensada), vjust = -1.5, size = 5, color = "red") +
+  
+  # No prensada
+  geom_line(aes(y = `No prensada`, color = "No prensada"), size = 0.9) +
+  geom_point(aes(y = `No prensada`, color = "No prensada")) +
+  geom_smooth(aes(y = `No prensada`), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = `No prensada`, label = round(`No prensada` * 100, 1)), vjust = -0.5, size = 3) +
+  geom_text(aes(y = `No prensada`, label = sig_noprensada), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Prensada" = "darkgreen",
+                                "No prensada" = "#FFB000")) +
+  
+  # Etiquetas y títulos
+  labs(x = NULL, y = NULL, color= NULL) +
+  
+  # Escalas
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1),
+                     limits = c(0, max(datos$Prensada, 
+                                       datos$`No prensada`, na.rm = TRUE) * 1.2)) +
+  scale_x_continuous(breaks = seq(2012, 2022, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2))) 
+```
+
+### Delitos de droga, armas, asociación ilícita y complejidad criminal
+
+Ingresos: número de ingresos.
+
+Porcentaje: está calculado sobre el total de ingresos por año.
+
+Complejidad criminal: comprende el ingreso de un individuo por delitos de droga que además tenga asociado un delito de asociación ilícita dentro del mismo episodio de ingreso.
+
+```{r, echo=FALSE, message=FALSE}
+rm(list = ls())
+setwd("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas")
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet="Gendarmería2")
+datos <- datos %>% filter(Region == "Total")
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+comparar_anios <- function(variable) {
+  sig <- rep("", length(variable))  # Vector del mismo tamaño que la variable
+  
+  for (i in 2:length(variable)) {
+    # Si hay NA en la comparación, salta esa iteración
+    if (is.na(variable[i-1]) || is.na(variable[i]) || variable[i-1] == 0 || variable[i] == 0) {
+      next
+    }
+    
+    # Escalar la variable si es necesario
+    escala <- max(variable, na.rm = TRUE)  # Encuentra el valor máximo
+    if (escala > 1) {
+      variable <- variable / escala  # Convierte a proporciones (0-1)
+    }
+    
+    # Convertir a conteo sobre 1000
+    x1 <- round(variable[i-1] * 1000)
+    x2 <- round(variable[i] * 1000)
+    
+    # Asegurar que x no sea mayor que n
+    x1 <- min(x1, 1000)
+    x2 <- min(x2, 1000)
+    
+    test <- prop.test(x = c(x1, x2), n = c(1000, 1000)) 
+    
+    if (test$p.value < 0.1) sig[i] <- "*"
+    if (test$p.value < 0.05) sig[i] <- "**"
+    if (test$p.value < 0.01) sig[i] <- "***"
+  }
+  
+  return(sig)
+}
+
+
+# Aplicar la función asegurando que mantiene el tamaño original de datos
+datos <- datos %>%
+  arrange(Año) %>%
+  mutate(
+    sig_drogas = comparar_anios(Delito_droga),
+    sig_drogas2 = comparar_anios(Droga),
+    sig_armas = comparar_anios(Delito_armas),
+    sig_armas2 = comparar_anios(Armas)
+  )
+
+
+
+g1 <- ggplot(datos, aes(x = Año)) +
+  
+  # Droga
+  geom_line(aes(y = Delito_droga / 100, color = "Delitos droga"), size = 0.9) +
+  geom_point(aes(y = Delito_droga / 100, color = "Delitos droga")) +
+  geom_smooth(aes(y = Delito_droga / 100), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Delito_droga / 100, label = scales::percent(Delito_droga / 100, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Delito_droga / 100, label = sig_drogas), vjust = -1.5, size = 5, color = "red") + 
+  # Delito Armas
+  geom_line(aes(y = Delito_armas / 100, color = "Delitos armas"), size = 0.9) +
+  geom_point(aes(y = Delito_armas / 100, color = "Delitos armas")) +
+  geom_smooth(aes(y = Delito_armas / 100), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Delito_armas / 100, label = scales::percent(Delito_armas / 100, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Delito_armas / 100, label = sig_armas), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Delitos droga" = "#8B4513", "Delitos armas" = "darkgreen")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Porcentaje", color = NULL) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1), limits = c(0, 0.25)) + 
+  scale_x_continuous(breaks = seq(2000, 2022, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))  
+
+g2 <- ggplot(datos, aes(x = Año)) +
+  
+  # Droga
+  geom_line(aes(y = Droga, color = "Delitos droga"), size = 0.9) +
+  geom_point(aes(y = Droga, color = "Delitos droga")) +
+  geom_smooth(aes(y = Droga), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Droga, label = Droga), vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Droga, label = sig_drogas2), vjust = -1.5, size = 5, color = "red") +  
+  # Ingresos Armas
+  geom_line(aes(y = Armas, color = "Delitos armas"), size = 0.9) +
+  geom_point(aes(y = Armas, color = "Delitos armas")) +
+  geom_smooth(aes(y = Armas), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Armas, label = Armas), vjust = -0.5, size = 3) +
+  geom_text(aes(y = Armas, label = sig_armas2), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Delitos droga" = "#8B4513", "Delitos armas" = "darkgreen")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Ingresos", color = NULL) +
+  scale_y_continuous(labels = scales::label_comma()) +  # Muestra números con separadores de miles
+  scale_x_continuous(breaks = seq(2000, 2022, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))  
+grid.arrange(g1, g2, ncol = 1) 
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+comparar_anios <- function(variable) {
+  sig <- rep("", length(variable))  # Vector del mismo tamaño que la variable
+  
+  for (i in 2:length(variable)) {
+    # Si hay NA en la comparación, salta esa iteración
+    if (is.na(variable[i-1]) || is.na(variable[i]) || variable[i-1] == 0 || variable[i] == 0) {
+      next
+    }
+    
+    # Escalar la variable si es necesario
+    escala <- max(variable, na.rm = TRUE)  # Encuentra el valor máximo
+    if (escala > 1) {
+      variable <- variable / escala  # Convierte a proporciones (0-1)
+    }
+    
+    # Convertir a conteo sobre 1000
+    x1 <- round(variable[i-1] * 1000)
+    x2 <- round(variable[i] * 1000)
+    
+    # Asegurar que x no sea mayor que n
+    x1 <- min(x1, 1000)
+    x2 <- min(x2, 1000)
+    
+    test <- prop.test(x = c(x1, x2), n = c(1000, 1000)) 
+    
+    if (test$p.value < 0.1) sig[i] <- "*"
+    if (test$p.value < 0.05) sig[i] <- "**"
+    if (test$p.value < 0.01) sig[i] <- "***"
+  }
+  
+  return(sig)
+}
+
+
+# Aplicar la función asegurando que mantiene el tamaño original de datos
+datos <- datos %>%
+  arrange(Año) %>%
+  mutate(
+    sig_asociacion = comparar_anios(Delito_asociacion),
+    sig_asociacion2 = comparar_anios(Asociacion),
+    sig_complejidad = comparar_anios(Delito_complejidad),
+    sig_complejidad2 = comparar_anios(Complejidad),
+    sig_complejidad2.1 = comparar_anios(Delito_complejidad2),
+    sig_complejidad2.2 = comparar_anios(Complejidad2)
+  )
+
+g3 <- ggplot(datos, aes(x = Año)) +
+  
+  # Asociación ilícita
+  geom_line(aes(y = Delito_asociacion / 100, color = "Asociación ilícita"), size = 0.9) +
+  geom_point(aes(y = Delito_asociacion / 100, color = "Asociación ilícita")) +
+  geom_smooth(aes(y = Delito_asociacion / 100), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Delito_asociacion / 100, label = scales::percent(Delito_asociacion / 100, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Delito_asociacion / 100, label = sig_asociacion), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Complejidad criminal1
+  geom_line(aes(y = Delito_complejidad / 100, color = "Complejidad criminal1"), size = 0.9) +
+  geom_point(aes(y = Delito_complejidad / 100, color = "Complejidad criminal1")) +
+  geom_smooth(aes(y = Delito_complejidad / 100), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Delito_complejidad / 100, label = scales::percent(Delito_complejidad / 100, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +
+  geom_text(aes(y = Delito_complejidad / 100, label = sig_complejidad), vjust = -1.5, size = 5, color = "red") +
+  
+ # Complejidad criminal2
+geom_line(aes(y = Delito_complejidad2 / 100, color = "Complejidad criminal2"), size = 0.9) +
+  geom_point(aes(y = Delito_complejidad2 / 100, color = "Complejidad criminal2")) +
+  geom_smooth(aes(y = Delito_complejidad2 / 100), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Delito_complejidad2 / 100, label = scales::percent(Delito_complejidad2 / 100, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +
+  geom_text(aes(y = Delito_complejidad2 / 100, label = sig_complejidad2.1), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Asociación ilícita" = "#FFB000",
+                                "Complejidad criminal1" = "darkgreen",
+                                "Complejidad criminal2" = "#8B4513")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Porcentaje", color = NULL) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1), limits = c(0, 0.022)) + 
+  scale_x_continuous(breaks = seq(2000, 2022, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))  
+
+g4 <- ggplot(datos, aes(x = Año)) +
+  
+  # Asociación ilícita
+  geom_line(aes(y = Asociacion, color = "Asociación ilícita"), size = 0.9) +
+  geom_point(aes(y = Asociacion, color = "Asociación ilícita")) +
+  geom_smooth(aes(y = Asociacion), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Asociacion, label = Asociacion), vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Asociacion, label = sig_asociacion2), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Complejidad criminal1
+  geom_line(aes(y = Complejidad, color = "Complejidad criminal1"), size = 0.9) +
+  geom_point(aes(y = Complejidad, color = "Complejidad criminal1")) +
+  geom_smooth(aes(y = Complejidad), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Complejidad, label = Complejidad), vjust = -0.5, size = 3) +
+  geom_text(aes(y = Complejidad, label = sig_complejidad2), vjust = -1.5, size = 5, color = "red") +
+  
+  # Complejidad2 criminal2
+geom_line(aes(y = Complejidad2, color = "Complejidad criminal2"), size = 0.9) +
+  geom_point(aes(y = Complejidad2, color = "Complejidad criminal2")) +
+  geom_smooth(aes(y = Complejidad2), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Complejidad2, label = Complejidad2), vjust = -0.5, size = 3) +
+  geom_text(aes(y = Complejidad2, label = sig_complejidad2.2), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Asociación ilícita" = "#FFB000",
+                                "Complejidad criminal1" = "darkgreen",
+                                "Complejidad criminal2" = "#8B4513")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Ingresos", color = NULL) +
+  scale_y_continuous(labels = scales::label_comma()) +  # Muestra números con separadores de miles
+  scale_x_continuous(breaks = seq(2000, 2022, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))  
+grid.arrange(g3, g4, ncol = 1)
+```
+
+### Casos Policiales Armas
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "CasosPoliciales_Armas")
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+comparar_anios <- function(variable) {
+  sig <- rep("", length(variable))  # Vector del mismo tamaño que la variable
+  
+  for (i in 2:length(variable)) {
+    # Si hay NA en la comparación, salta esa iteración
+    if (is.na(variable[i-1]) || is.na(variable[i]) || variable[i-1] == 0 || variable[i] == 0) {
+      next
+    }
+    
+    # Escalar la variable si es necesario
+    escala <- max(variable, na.rm = TRUE)  # Encuentra el valor máximo
+    if (escala > 1) {
+      variable <- variable / escala  # Convierte a proporciones (0-1)
+    }
+    
+    # Convertir a conteo sobre 1000
+    x1 <- round(variable[i-1] * 1000)
+    x2 <- round(variable[i] * 1000)
+    
+    # Asegurar que x no sea mayor que n
+    x1 <- min(x1, 1000)
+    x2 <- min(x2, 1000)
+    
+    test <- prop.test(x = c(x1, x2), n = c(1000, 1000)) 
+    
+    if (test$p.value < 0.1) sig[i] <- "*"
+    if (test$p.value < 0.05) sig[i] <- "**"
+    if (test$p.value < 0.01) sig[i] <- "***"
+  }
+  
+  return(sig)
+}
+
+
+# Aplicar la función asegurando que mantiene el tamaño original de datos
+datos <- datos %>%
+  arrange(Año) %>%
+  mutate(
+    sig_porte = comparar_anios(Prop_Porte_arma_cortante_punzante),
+    sig_porte2 = comparar_anios(Porte_arma_corto_punzante),
+    sig_otra = comparar_anios(Prop_Otras_infracciones_ley_de_armas),
+    sig_otra2 = comparar_anios(Otras_infracciones),
+  )
+
+g1 <- ggplot(datos, aes(x = Año)) +
+  
+  # Porte arma corto punzante
+  geom_line(aes(y = Prop_Porte_arma_cortante_punzante, color = "Porte arma corto punzante"), size = 0.9) +
+  geom_point(aes(y = Prop_Porte_arma_cortante_punzante, color = "Porte arma corto punzante")) +
+  geom_smooth(aes(y = Prop_Porte_arma_cortante_punzante), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Porte_arma_cortante_punzante, label = scales::percent(Prop_Porte_arma_cortante_punzante, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Prop_Porte_arma_cortante_punzante, label = sig_porte), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Otras infracciones
+  geom_line(aes(y = Prop_Otras_infracciones_ley_de_armas, color = "Otras infracciones"), size = 0.9) +
+  geom_point(aes(y = Prop_Otras_infracciones_ley_de_armas, color = "Otras infracciones")) +
+  geom_smooth(aes(y = Prop_Otras_infracciones_ley_de_armas), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Otras_infracciones_ley_de_armas, label = scales::percent(Prop_Otras_infracciones_ley_de_armas, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +
+  geom_text(aes(y = Prop_Otras_infracciones_ley_de_armas, label = sig_otra), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Porte arma corto punzante" = "#FFB000",
+                                "Otras infracciones" = "darkgreen")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Porcentaje", color = NULL) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1), limits = c(0, 0.7)) + 
+  scale_x_continuous(breaks = seq(2005, 2024, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))  
+
+g2 <- ggplot(datos, aes(x = Año)) +
+  
+  # Porte arma corto punzante
+  geom_line(aes(y = Porte_arma_corto_punzante, color = "Porte arma corto punzante"), size = 0.9) +
+  geom_point(aes(y = Porte_arma_corto_punzante, color = "Porte arma corto punzante")) +
+  geom_smooth(aes(y = Porte_arma_corto_punzante), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Porte_arma_corto_punzante, label = Porte_arma_corto_punzante), vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Porte_arma_corto_punzante, label = sig_porte2), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Complejidad criminal1
+  geom_line(aes(y = Otras_infracciones, color = "Otras infracciones"), size = 0.9) +
+  geom_point(aes(y = Otras_infracciones, color = "Otras infracciones")) +
+  geom_smooth(aes(y = Otras_infracciones), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Otras_infracciones, label = Otras_infracciones), vjust = -0.5, size = 3) +
+geom_text(aes(y = Otras_infracciones, label = sig_otra2), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Porte arma corto punzante" = "#FFB000",
+                                "Otras infracciones" = "darkgreen")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Cantidad", color = NULL) +
+  scale_y_continuous(labels = scales::label_comma()) +  # Muestra números con separadores de miles
+  scale_x_continuous(breaks = seq(2005, 2024, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))  
+grid.arrange(g1, g2, ncol = 1)
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+comparar_anios <- function(variable) {
+  sig <- rep("", length(variable))  # Vector del mismo tamaño que la variable
+  
+  for (i in 2:length(variable)) {
+    # Si hay NA en la comparación, salta esa iteración
+    if (is.na(variable[i-1]) || is.na(variable[i]) || variable[i-1] == 0 || variable[i] == 0) {
+      next
+    }
+    
+    # Escalar la variable si es necesario
+    escala <- max(variable, na.rm = TRUE)  # Encuentra el valor máximo
+    if (escala > 1) {
+      variable <- variable / escala  # Convierte a proporciones (0-1)
+    }
+    
+    # Convertir a conteo sobre 1000
+    x1 <- round(variable[i-1] * 1000)
+    x2 <- round(variable[i] * 1000)
+    
+    # Asegurar que x no sea mayor que n
+    x1 <- min(x1, 1000)
+    x2 <- min(x2, 1000)
+    
+    test <- prop.test(x = c(x1, x2), n = c(1000, 1000)) 
+    
+    if (test$p.value < 0.1) sig[i] <- "*"
+    if (test$p.value < 0.05) sig[i] <- "**"
+    if (test$p.value < 0.01) sig[i] <- "***"
+  }
+  
+  return(sig)
+}
+
+
+# Aplicar la función asegurando que mantiene el tamaño original de datos
+datos <- datos %>%
+  arrange(Año) %>%
+  mutate(
+    sig_disparo = comparar_anios(Prop_Disparo_injustificado),
+    sig_disparo2 = comparar_anios(Disparo_injustificado),
+    sig_porte = comparar_anios(Prop_Porte_posesión_de_armas_explosivos),
+    sig_porte2 = comparar_anios(Porte_armas_explosivos),
+  )
+
+g3 <- ggplot(datos, aes(x = Año)) +
+  
+  # Disparo injustificado
+  geom_line(aes(y = Prop_Disparo_injustificado, color = "Disparo injustificado"), size = 0.9) +
+  geom_point(aes(y = Prop_Disparo_injustificado, color = "Disparo injustificado")) +
+  geom_smooth(aes(y = Prop_Disparo_injustificado), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Disparo_injustificado, label = scales::percent(Prop_Disparo_injustificado, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Prop_Disparo_injustificado, label = sig_disparo), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Porte armas o explosivos
+  geom_line(aes(y = Prop_Porte_posesión_de_armas_explosivos, color = "Porte armas o explosivos"), size = 0.9) +
+  geom_point(aes(y = Prop_Porte_posesión_de_armas_explosivos, color = "Porte armas o explosivos")) +
+  geom_smooth(aes(y = Prop_Porte_posesión_de_armas_explosivos), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Porte_posesión_de_armas_explosivos, label = scales::percent(Prop_Porte_posesión_de_armas_explosivos, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +
+  geom_text(aes(y = Prop_Porte_posesión_de_armas_explosivos, label = sig_porte), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Disparo injustificado" = "#FFB000",
+                                "Porte armas o explosivos" = "darkgreen")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Porcentaje", color = NULL) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1), limits = c(0, 0.3)) + 
+  scale_x_continuous(breaks = seq(2005, 2024, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))  
+
+g4 <- ggplot(datos, aes(x = Año)) +
+  
+  # Disparo injustificado
+  geom_line(aes(y = Disparo_injustificado, color = "Disparo injustificado"), size = 0.9) +
+  geom_point(aes(y = Disparo_injustificado, color = "Disparo injustificado")) +
+  geom_smooth(aes(y = Disparo_injustificado), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Disparo_injustificado, label = Disparo_injustificado), vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Disparo_injustificado, label = sig_disparo2), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Complejidad criminal1
+  geom_line(aes(y = Porte_armas_explosivos, color = "Porte armas o explosivos"), size = 0.9) +
+  geom_point(aes(y = Porte_armas_explosivos, color = "Porte armas o explosivos")) +
+  geom_smooth(aes(y = Porte_armas_explosivos), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Porte_armas_explosivos, label = Porte_armas_explosivos), vjust = -0.5, size = 3) +
+  geom_text(aes(y = Porte_armas_explosivos, label = sig_porte2), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Disparo injustificado" = "#FFB000",
+                                "Porte armas o explosivos" = "darkgreen")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Cantidad", color = NULL) +
+  scale_y_continuous(labels = scales::label_comma()) +  # Muestra números con separadores de miles
+  scale_x_continuous(breaks = seq(2005, 2024, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))  
+grid.arrange(g3, g4, ncol = 1)
+```
+
+### Casos Policiales Drogas
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datos <- read_excel("C:/Users/cjara/OneDrive - Universidad Católica de Chile/Mercado drogas/BBDD_Mercado.xlsx", sheet = "CasosPoliciales_Drogas")
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+comparar_anios <- function(variable) {
+  sig <- rep("", length(variable))  # Vector del mismo tamaño que la variable
+  
+  for (i in 2:length(variable)) {
+    # Si hay NA en la comparación, salta esa iteración
+    if (is.na(variable[i-1]) || is.na(variable[i]) || variable[i-1] == 0 || variable[i] == 0) {
+      next
+    }
+    
+    # Escalar la variable si es necesario
+    escala <- max(variable, na.rm = TRUE)  # Encuentra el valor máximo
+    if (escala > 1) {
+      variable <- variable / escala  # Convierte a proporciones (0-1)
+    }
+    
+    # Convertir a conteo sobre 1000
+    x1 <- round(variable[i-1] * 1000)
+    x2 <- round(variable[i] * 1000)
+    
+    # Asegurar que x no sea mayor que n
+    x1 <- min(x1, 1000)
+    x2 <- min(x2, 1000)
+    
+    test <- prop.test(x = c(x1, x2), n = c(1000, 1000)) 
+    
+    if (test$p.value < 0.1) sig[i] <- "*"
+    if (test$p.value < 0.05) sig[i] <- "**"
+    if (test$p.value < 0.01) sig[i] <- "***"
+  }
+  
+  return(sig)
+}
+
+
+# Aplicar la función asegurando que mantiene el tamaño original de datos
+datos <- datos %>%
+  arrange(Año) %>%
+  mutate(
+    sig_trafico = comparar_anios(Prop_Trafico),
+    sig_trafico2 = comparar_anios(Trafico),
+    sig_microtrafico = comparar_anios(Prop_Microtrafico),
+    sig_microtrafico2 = comparar_anios(Microtrafico),
+  )
+
+g1 <- ggplot(datos, aes(x = Año)) +
+  
+  # Trafico
+  geom_line(aes(y = Prop_Trafico, color = "Trafico"), size = 0.9) +
+  geom_point(aes(y = Prop_Trafico, color = "Trafico")) +
+  geom_smooth(aes(y = Prop_Trafico), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Trafico, label = scales::percent(Prop_Trafico, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Prop_Trafico, label = sig_trafico), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Microtrafico
+  geom_line(aes(y = Prop_Microtrafico, color = "Microtrafico"), size = 0.9) +
+  geom_point(aes(y = Prop_Microtrafico, color = "Microtrafico")) +
+  geom_smooth(aes(y = Prop_Microtrafico), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Microtrafico, label = scales::percent(Prop_Microtrafico, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +
+  geom_text(aes(y = Prop_Microtrafico, label = sig_microtrafico), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Trafico" = "#FFB000",
+                                "Microtrafico" = "darkgreen")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Porcentaje", color = NULL) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1), limits = c(0, 0.6)) + 
+  scale_x_continuous(breaks = seq(2005, 2024, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2))) 
+
+```
+
+```{r, fig.width=10, fig.height=6, echo=FALSE, message=FALSE, warning=FALSE}
+
+comparar_anios <- function(variable) {
+  sig <- rep("", length(variable))  # Vector del mismo tamaño que la variable
+  
+  for (i in 2:length(variable)) {
+    # Si hay NA en la comparación, salta esa iteración
+    if (is.na(variable[i-1]) || is.na(variable[i]) || variable[i-1] == 0 || variable[i] == 0) {
+      next
+    }
+    
+    # Escalar la variable si es necesario
+    escala <- max(variable, na.rm = TRUE)  # Encuentra el valor máximo
+    if (escala > 1) {
+      variable <- variable / escala  # Convierte a proporciones (0-1)
+    }
+    
+    # Convertir a conteo sobre 1000
+    x1 <- round(variable[i-1] * 1000)
+    x2 <- round(variable[i] * 1000)
+    
+    # Asegurar que x no sea mayor que n
+    x1 <- min(x1, 1000)
+    x2 <- min(x2, 1000)
+    
+    test <- prop.test(x = c(x1, x2), n = c(1000, 1000)) 
+    
+    if (test$p.value < 0.1) sig[i] <- "*"
+    if (test$p.value < 0.05) sig[i] <- "**"
+    if (test$p.value < 0.01) sig[i] <- "***"
+  }
+  
+  return(sig)
+}
+
+
+# Aplicar la función asegurando que mantiene el tamaño original de datos
+datos <- datos %>%
+  arrange(Año) %>%
+  mutate(
+    sig_elab = comparar_anios(Prop_Elab_Prod),
+    sig_elab2 = comparar_anios(Elab_prod),
+    sig_otra = comparar_anios(Prop_Otras),
+    sig_otra2 = comparar_anios(Otras),
+  )
+
+g1 <- ggplot(datos, aes(x = Año)) +
+  
+  # Elab_prod
+  geom_line(aes(y = Prop_Elab_Prod, color = "Elaboración o producción"), size = 0.9) +
+  geom_point(aes(y = Prop_Elab_Prod, color = "Elaboración o producción")) +
+  geom_smooth(aes(y = Prop_Elab_Prod), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Elab_Prod, label = scales::percent(Prop_Elab_Prod, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Prop_Elab_Prod, label = sig_elab), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Otras
+  geom_line(aes(y = Prop_Otras, color = "Otras infracciones"), size = 0.9) +
+  geom_point(aes(y = Prop_Otras, color = "Otras infracciones")) +
+  geom_smooth(aes(y = Prop_Otras), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Prop_Otras, label = scales::percent(Prop_Otras, accuracy = 0.1)), 
+            vjust = -0.5, size = 3) +
+  geom_text(aes(y = Prop_Otras, label = sig_otra), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Elaboración o producción" = "#FFB000",
+                                "Otras infracciones" = "darkgreen")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Porcentaje", color = NULL) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.1), limits = c(0, 0.65)) + 
+  scale_x_continuous(breaks = seq(2005, 2024, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2))) 
+
+g2 <- ggplot(datos, aes(x = Año)) +
+  
+  # Elab_prod
+  geom_line(aes(y = Elab_prod, color = "Elaboración o producción"), size = 0.9) +
+  geom_point(aes(y = Elab_prod, color = "Elaboración o producción")) +
+  geom_smooth(aes(y = Elab_prod), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Elab_prod, label = Elab_prod), vjust = -0.5, size = 3) +  
+  geom_text(aes(y = Elab_prod, label = sig_elab2), vjust = -1.5, size = 5, color = "red") + 
+  
+  # Otras
+  geom_line(aes(y = Otras, color = "Otras infracciones"), size = 0.9) +
+  geom_point(aes(y = Otras, color = "Otras infracciones")) +
+  geom_smooth(aes(y = Otras), method = "lm", se = FALSE, linetype = "dashed", color = "gray60", size = 0.75) +
+  geom_text(aes(y = Otras, label = Otras), vjust = -0.5, size = 3) +
+  geom_text(aes(y = Otras, label = sig_otra2), vjust = -1.5, size = 5, color = "red") +
+  
+  # Configuración de colores y leyenda
+  scale_color_manual(values = c("Elaboración o producción" = "#FFB000",
+                                "Otras infracciones" = "darkgreen")) +
+  
+  # Etiquetas y escalas
+  labs(x = NULL, y = "Cantidad", color = NULL) +
+  scale_y_continuous(labels = scales::label_comma()) +  # Muestra números con separadores de miles
+  scale_x_continuous(breaks = seq(2005, 2024, 2)) +
+  
+  # Tema
+  theme_minimal() +
+  theme(legend.position = "bottom",           
+        legend.key.width = unit(2, "cm"),     
+        legend.key.height = unit(0.4, "cm")) +
+  guides(color = guide_legend(override.aes = list(linetype = 1, size = 1.2)))  
+grid.arrange(g1, g2, ncol = 1)
+```
